@@ -1,2 +1,2 @@
-env/.env*
-!env/.env.example.*
+.github/env/.env*
+!.github/env/.env.example.*
