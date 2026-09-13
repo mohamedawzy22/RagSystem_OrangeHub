@@ -1,0 +1,2 @@
+.github/env/.env*
+!.github/env/.env.example.*
