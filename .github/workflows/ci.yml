@@ -56,7 +56,7 @@ jobs:
           ENV_APP: ${{ secrets.ENV_APP }}
         run: |
           test -n "$ENV_APP" || (echo "ENV_APP secret is missing" && exit 1)
-          printf '%s\n' "$ENV_APP" > .env
+          printf '%s\n' "$ENV_APP" > .env.app
 
       - name: Run tests
         run: uv run pytest
