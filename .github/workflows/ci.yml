@@ -13,6 +13,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    env:
+      PYTHONPATH: src
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,4 +35,4 @@ jobs:
         run: uv run pre-commit run --all-files
 
       - name: Run tests
-        run: PYTHONPATH=src uv run pytest
+        run: uv run pytest
