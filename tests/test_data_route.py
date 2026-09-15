@@ -1,8 +1,7 @@
+from controllers.DataController import DataController
 from fastapi.testclient import TestClient
 
 from main import app
-from controllers.DataController import DataController
-
 
 client = TestClient(app)
 

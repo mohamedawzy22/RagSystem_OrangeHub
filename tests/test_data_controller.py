@@ -1,10 +1,11 @@
 import io
-from models import ResponseSignal
+import os
+
 from fastapi import UploadFile
 from starlette.datastructures import Headers
-import os
-from controllers.ProjectController import ProjectController
-from controllers.DataController import DataController
+
+from controllers import DataController, ProjectController
+from models import ResponseSignal
 
 
 def test_valid_txt_file():
@@ -16,7 +17,7 @@ def test_valid_txt_file():
 
     controller = DataController()
 
-    is_valid, result = controller.validate_uploaded_file(file)
+    is_valid, _ = controller.validate_uploaded_file(file)
 
     assert is_valid is True
 
@@ -30,7 +31,7 @@ def test_invalid_file_type():
 
     controller = DataController()
 
-    is_valid, result = controller.validate_uploaded_file(file)
+    is_valid, _ = controller.validate_uploaded_file(file)
 
     assert is_valid is False
 
