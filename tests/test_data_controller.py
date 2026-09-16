@@ -4,7 +4,7 @@ import os
 from fastapi import UploadFile
 from starlette.datastructures import Headers
 
-from controllers import DataController, ProjectController
+from controllers.data_controller import DataController, ProjectController
 from models import ResponseSignal
 
 
