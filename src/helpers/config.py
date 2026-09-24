@@ -1,5 +1,15 @@
+from pathlib import Path
+
 from pydantic import BaseModel
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import (
+    BaseSettings,
+    SettingsConfigDict,
+)
+
+from services.vectordb.vector_db_enum import DistanceMetric
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+ENV_FILE = BASE_DIR / ".env"
 
 
 class ChatModelSettings(BaseModel):
@@ -30,8 +40,18 @@ class Setting(BaseSettings):
     CHAT_MODELS: dict[str, ChatModelSettings]
     EMBEDDING_MODELS: dict[str, EmbeddingModelSettings]
 
+    CHAT_PRIMARY_MODEL: str
+    CHAT_FALLBACK_MODEL: str
+    EMBEDDING_MODEL: str
+
+    QDRANT_URL: str
+    QDRANT_API_KEY: str | None = None
+    QDRANT_COLLECTION_NAME: str
+    QDRANT_VECTOR_SIZE: int
+    QDRANT_DISTANCE: DistanceMetric
+
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=ENV_FILE,
         extra="ignore",
     )
 
