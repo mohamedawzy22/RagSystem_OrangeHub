@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from helpers.config import ChatModelSettings, EmbeddingModelSettings
-from services.llm.factory import ModelFactory
+from services.llm.llm_factory import ModelFactory
 from services.llm.providers.ollama import (
     OllamaChatModel,
     OllamaEmbeddingModel,

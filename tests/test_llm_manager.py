@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from services.llm.manager import ModelManager
+from services.llm.llm_manager import ModelManager
 
 
 def test_load_models():
