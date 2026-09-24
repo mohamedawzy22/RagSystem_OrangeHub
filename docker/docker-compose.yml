@@ -20,8 +20,22 @@ services:
     networks:
       - back
 
+  qdrant:
+    image: qdrant/qdrant:v1.13.6
+    container_name: qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - back
+    restart: always
+
+
 networks:
   back:
 
 volumes:
   mongo_data:
+  qdrant_data:
