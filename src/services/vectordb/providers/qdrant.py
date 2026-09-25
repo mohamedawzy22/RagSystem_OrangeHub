@@ -34,6 +34,14 @@ class QdrantVectorDB(VectorDB):
             distance.value,
         )
 
+    async def close(self) -> None:
+        logger.info(
+            "Closing Qdrant client: collection=%s",
+            self.collection_name,
+        )
+
+        await self.client.close()
+
     def _get_distance(self) -> models.Distance:
         distance_map = {
             DistanceMetric.COSINE: models.Distance.COSINE,

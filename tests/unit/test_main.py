@@ -25,6 +25,8 @@ def test_lifespan_initializes_and_closes_resources(monkeypatch):
     model_factory = MagicMock()
     model_manager = MagicMock()
     model_manager.health_check_models = AsyncMock()
+    model_manager.warm_up_models = AsyncMock()
+    model_manager.close = AsyncMock()
     model_manager.get_selected_chat_model.return_value = MagicMock()
     model_manager.get_selected_embedding_model.return_value = MagicMock()
 
@@ -41,6 +43,7 @@ def test_lifespan_initializes_and_closes_resources(monkeypatch):
 
     vector_db_factory = MagicMock()
     vector_db_manager = MagicMock()
+    vector_db_manager.close = AsyncMock()
     vector_db = MagicMock()
     vector_db.create_collection = AsyncMock()
 
@@ -83,3 +86,8 @@ def test_lifespan_initializes_and_closes_resources(monkeypatch):
     model_manager.health_check_models.assert_awaited_once()
     vector_db_manager.get_database.assert_called_once_with("default")
     vector_db.create_collection.assert_awaited_once()
+    model_manager.warm_up_models.assert_awaited_once_with(
+        timeout_seconds=settings.MODEL_WARMUP_TIMEOUT_SECONDS,
+    )
+    model_manager.close.assert_awaited_once()
+    vector_db_manager.close.assert_awaited_once()

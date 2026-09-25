@@ -1,4 +1,3 @@
-import logging
 import os
 from dataclasses import dataclass
 from statistics import mean, median
@@ -9,10 +8,11 @@ from langchain_text_splitters import CharacterTextSplitter
 
 from controllers.base_controller import BaseController
 from models import ProcessingEnum
+from utils.logger import get_logger
 
 from .project_controller import ProjectController
 
-logger = logging.getLogger("uvicorn.error")
+logger = get_logger(__name__)
 
 
 @dataclass

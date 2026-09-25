@@ -1,4 +1,3 @@
-import logging
 import os
 
 import aiofiles
@@ -13,10 +12,11 @@ from models.chunk_model import ChunkModel
 from models.db_schemes import Asset, DataChunk
 from models.enums.asset_type_enum import AssetTypeEnum
 from models.project_model import ProjectModel
+from utils.logger import get_logger
 
 from .schemes.data import ProcessRequest
 
-logger = logging.getLogger("uvicorn.error")
+logger = get_logger(__name__)
 
 
 data_router = APIRouter(

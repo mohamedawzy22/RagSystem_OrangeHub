@@ -11,7 +11,7 @@ from services.llm.providers.ollama import (
 @pytest.mark.anyio
 async def test_ollama_chat_generate():
     model = OllamaChatModel(
-        model_id="qwen3:8b",
+        model_id="qwen2.5:3b",
         base_url="http://localhost:11434",
     )
 
@@ -33,7 +33,7 @@ async def test_ollama_chat_generate():
     assert result == "Hello from Ollama"
 
     model.client.chat.assert_awaited_once_with(
-        model="qwen3:8b",
+        model="qwen2.5:3b",
         messages=[
             {
                 "role": "user",
@@ -44,13 +44,14 @@ async def test_ollama_chat_generate():
             "temperature": 0.5,
             "num_predict": 100,
         },
+        keep_alive=300,
     )
 
 
 @pytest.mark.anyio
 async def test_ollama_chat_generate_without_max_tokens():
     model = OllamaChatModel(
-        model_id="qwen3:8b",
+        model_id="qwen2.5:3b",
         base_url="http://localhost:11434",
     )
 
@@ -71,7 +72,7 @@ async def test_ollama_chat_generate_without_max_tokens():
     assert result == "Hello"
 
     model.client.chat.assert_awaited_once_with(
-        model="qwen3:8b",
+        model="qwen2.5:3b",
         messages=[
             {
                 "role": "user",
@@ -81,13 +82,14 @@ async def test_ollama_chat_generate_without_max_tokens():
         options={
             "temperature": 0.7,
         },
+        keep_alive=300,
     )
 
 
 @pytest.mark.anyio
 async def test_ollama_chat_generate_error():
     model = OllamaChatModel(
-        model_id="qwen3:8b",
+        model_id="qwen2.5:3b",
         base_url="http://localhost:11434",
     )
 
@@ -101,7 +103,7 @@ async def test_ollama_chat_generate_error():
 @pytest.mark.anyio
 async def test_ollama_chat_stream():
     model = OllamaChatModel(
-        model_id="qwen3:8b",
+        model_id="qwen2.5:3b",
         base_url="http://localhost:11434",
     )
 
@@ -135,7 +137,7 @@ async def test_ollama_chat_stream():
     ]
 
     model.client.chat.assert_awaited_once_with(
-        model="qwen3:8b",
+        model="qwen2.5:3b",
         messages=[
             {
                 "role": "user",
@@ -147,13 +149,14 @@ async def test_ollama_chat_stream():
             "num_predict": 50,
         },
         stream=True,
+        keep_alive=300,
     )
 
 
 @pytest.mark.anyio
 async def test_ollama_chat_stream_error():
     model = OllamaChatModel(
-        model_id="qwen3:8b",
+        model_id="qwen2.5:3b",
         base_url="http://localhost:11434",
     )
 
@@ -168,7 +171,7 @@ async def test_ollama_chat_stream_error():
 @pytest.mark.anyio
 async def test_ollama_embedding_text():
     model = OllamaEmbeddingModel(
-        model_id="bge-m3",
+        model_id="bge-m3:latest",
         base_url="http://localhost:11434",
         dimension=1024,
     )
@@ -187,15 +190,16 @@ async def test_ollama_embedding_text():
     assert result == [0.1, 0.2, 0.3]
 
     model.client.embed.assert_awaited_once_with(
-        model="bge-m3",
+        model="bge-m3:latest",
         input="Hello world",
+        keep_alive=300,
     )
 
 
 @pytest.mark.anyio
 async def test_ollama_embedding_text_error():
     model = OllamaEmbeddingModel(
-        model_id="bge-m3",
+        model_id="bge-m3:latest",
         base_url="http://localhost:11434",
         dimension=1024,
     )
@@ -210,7 +214,7 @@ async def test_ollama_embedding_text_error():
 @pytest.mark.anyio
 async def test_ollama_embedding_documents():
     model = OllamaEmbeddingModel(
-        model_id="bge-m3",
+        model_id="bge-m3:latest",
         base_url="http://localhost:11434",
         dimension=1024,
     )
@@ -232,15 +236,16 @@ async def test_ollama_embedding_documents():
     assert result == embeddings
 
     model.client.embed.assert_awaited_once_with(
-        model="bge-m3",
+        model="bge-m3:latest",
         input=["Hello", "World"],
+        keep_alive=300,
     )
 
 
 @pytest.mark.anyio
 async def test_ollama_embedding_documents_error():
     model = OllamaEmbeddingModel(
-        model_id="bge-m3",
+        model_id="bge-m3:latest",
         base_url="http://localhost:11434",
         dimension=1024,
     )

@@ -158,6 +158,77 @@ class ModelManager:
             embedding_name,
         )
 
+    async def warm_up_models(self, timeout_seconds: int = 30) -> None:
+        logger.info("Warming up selected chat and embedding models...")
+
+        selected_chat = self.get_selected_chat_model()
+        selected_embedding = self.get_selected_embedding_model()
+
+        await self._warm_up_model(
+            name="chat",
+            model=selected_chat,
+            timeout_seconds=timeout_seconds,
+        )
+
+        await self._warm_up_model(
+            name="embedding",
+            model=selected_embedding,
+            timeout_seconds=timeout_seconds,
+        )
+
+        logger.info("Model warm-up completed successfully")
+
+    @staticmethod
+    async def _warm_up_model(
+        name: str,
+        model,
+        timeout_seconds: int,
+    ) -> None:
+        logger.info("Warming up %s model", name)
+
+        try:
+            await asyncio.wait_for(
+                model.warm_up(),
+                timeout=timeout_seconds,
+            )
+
+        except Exception as exc:
+            logger.exception(
+                "Warm-up failed: %s",
+                name,
+            )
+            raise RuntimeError(f"{name} model warm-up failed") from exc
+
+        logger.info("%s model warm-up completed", name)
+
+    async def close(self) -> None:
+        logger.info("Closing model clients...")
+
+        for name, model in self._chat_models.items():
+            try:
+                await model.close()
+                logger.debug("Closed chat model: %s", name)
+            except Exception:
+                logger.exception(
+                    "Failed to close chat model: %s",
+                    name,
+                )
+
+        for name, model in self._embedding_models.items():
+            try:
+                await model.close()
+                logger.debug(
+                    "Closed embedding model: %s",
+                    name,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to close embedding model: %s",
+                    name,
+                )
+
+        logger.info("Model clients closed")
+
     def get_chat_model(self, name: str) -> ChatModel:
         logger.debug("Getting chat model: %s", name)
 

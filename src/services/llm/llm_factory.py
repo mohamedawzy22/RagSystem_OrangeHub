@@ -41,6 +41,7 @@ class ModelFactory:
             return OllamaChatModel(
                 model_id=config.model,
                 base_url=self.settings.OLLAMA_BASE_URL,
+                keep_alive=self.settings.OLLAMA_KEEP_ALIVE,
             )
 
         if config.provider == "openrouter":
@@ -74,6 +75,7 @@ class ModelFactory:
                 model_id=config.model,
                 base_url=self.settings.OLLAMA_BASE_URL,
                 dimension=config.dimension,
+                keep_alive=self.settings.OLLAMA_KEEP_ALIVE,
             )
 
         if config.provider == "openrouter":

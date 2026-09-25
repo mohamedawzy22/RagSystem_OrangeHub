@@ -24,3 +24,6 @@ class VectorDB(ABC):
         limit: int = 5,
     ) -> list[dict]:
         pass
+
+    async def close(self) -> None:
+        return None

@@ -13,8 +13,10 @@ class OllamaChatModel(ChatModel):
         self,
         model_id: str,
         base_url: str,
+        keep_alive: int = 300,
     ):
         self.model_id = model_id
+        self.keep_alive = keep_alive
         self.client = AsyncClient(host=base_url)
 
         logger.info(
@@ -51,6 +53,7 @@ class OllamaChatModel(ChatModel):
                     }
                 ],
                 options=options,
+                keep_alive=self.keep_alive,
             )
 
             logger.info(
@@ -66,6 +69,9 @@ class OllamaChatModel(ChatModel):
                 self.model_id,
             )
             raise
+
+    async def close(self) -> None:
+        await self.client.close()
 
     async def stream(
         self,
@@ -97,6 +103,7 @@ class OllamaChatModel(ChatModel):
                 ],
                 options=options,
                 stream=True,
+                keep_alive=self.keep_alive,
             )
 
             async for chunk in response:
@@ -142,9 +149,11 @@ class OllamaEmbeddingModel(EmbeddingModel):
         model_id: str,
         base_url: str,
         dimension: int,
+        keep_alive: int = 300,
     ):
         self.model_id = model_id
         self.dimension = dimension
+        self.keep_alive = keep_alive
         self.client = AsyncClient(host=base_url)
 
         logger.info(
@@ -167,6 +176,7 @@ class OllamaEmbeddingModel(EmbeddingModel):
             response = await self.client.embed(
                 model=self.model_id,
                 input=text,
+                keep_alive=self.keep_alive,
             )
 
             embedding = response["embeddings"][0]
@@ -201,6 +211,7 @@ class OllamaEmbeddingModel(EmbeddingModel):
             response = await self.client.embed(
                 model=self.model_id,
                 input=texts,
+                keep_alive=self.keep_alive,
             )
 
             embeddings = response["embeddings"]
@@ -219,6 +230,9 @@ class OllamaEmbeddingModel(EmbeddingModel):
                 self.model_id,
             )
             raise
+
+    async def close(self) -> None:
+        await self.client.close()
 
     async def health_check(self) -> bool:
         try:

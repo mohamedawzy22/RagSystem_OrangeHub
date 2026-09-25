@@ -26,6 +26,10 @@ class Setting(BaseSettings):
 
     LOG_LEVEL: str = "INFO"
 
+    MODEL_WARMUP_ENABLED: bool = True
+    MODEL_WARMUP_TIMEOUT_SECONDS: int = 30
+    OLLAMA_KEEP_ALIVE: int = 300
+
     FILE_ALLOWED_TYPES: list[str]
     FILE_MAX_SIZE: int
     FILE_DEFAULT_CHUNK_SIZE: int
@@ -78,6 +82,12 @@ class Setting(BaseSettings):
 
         if self.CHAT_FALLBACK_COOLDOWN_SECONDS < 0:
             raise ValueError("CHAT_FALLBACK_COOLDOWN_SECONDS cannot be negative")
+
+        if self.MODEL_WARMUP_TIMEOUT_SECONDS <= 0:
+            raise ValueError("MODEL_WARMUP_TIMEOUT_SECONDS must be greater than zero")
+
+        if self.OLLAMA_KEEP_ALIVE == 0 or self.OLLAMA_KEEP_ALIVE < -1:
+            raise ValueError("OLLAMA_KEEP_ALIVE must be -1 or greater than zero")
 
         if self.QDRANT_VECTOR_SIZE <= 0:
             raise ValueError("QDRANT_VECTOR_SIZE must be greater than zero")

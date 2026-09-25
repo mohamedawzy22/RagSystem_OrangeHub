@@ -11,7 +11,7 @@ def mock_model_factory():
     factory.settings.CHAT_MODELS = {
         "qwen3": SimpleNamespace(
             provider="ollama",
-            model="qwen3:8b",
+            model="qwen2.5:3b",
         ),
         "fallback": SimpleNamespace(
             provider="ollama",
@@ -22,7 +22,7 @@ def mock_model_factory():
     factory.settings.EMBEDDING_MODELS = {
         "bge-m3": SimpleNamespace(
             provider="ollama",
-            model="bge-m3",
+            model="bge-m3:latest",
             dimension=1024,
         ),
     }

@@ -65,6 +65,9 @@ class OpenRouterChatModel(ChatModel):
             )
             raise
 
+    async def close(self) -> None:
+        await self.client.close()
+
     async def stream(
         self,
         prompt: str,
@@ -215,6 +218,9 @@ class OpenRouterEmbeddingModel(EmbeddingModel):
                 self.model_id,
             )
             raise
+
+    async def close(self) -> None:
+        await self.client.close()
 
     async def health_check(self) -> bool:
         try:
