@@ -15,8 +15,6 @@ class DataController(BaseController):
         self.scale = 1048576
 
     def validate_uploaded_file(self, file: UploadFile):
-        print("filename:", file.filename)
-        print("content_type:", file.content_type)
 
         # Check that a file was provided
         if file is None:
