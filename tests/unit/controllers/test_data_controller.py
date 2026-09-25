@@ -69,3 +69,43 @@ def test_get_project_path(tmp_path):
 
     assert result == os.path.join(str(tmp_path), "123")
     assert os.path.exists(result)
+
+
+def test_validate_uploaded_file_missing():
+    controller = DataController()
+
+    result = controller.validate_uploaded_file(None)
+
+    assert result == (
+        False,
+        ResponseSignal.FILE_NOT_FOUND.value,
+    )
+
+
+def test_generate_unique_filepath_collision(tmp_path, monkeypatch):
+    controller = DataController()
+
+    monkeypatch.setattr(
+        ProjectController,
+        "get_project_path",
+        lambda self, project_id: str(tmp_path),
+    )
+
+    first_path = tmp_path / "abc_test.txt"
+    first_path.write_text("existing")
+
+    random_keys = iter(["abc", "def"])
+
+    monkeypatch.setattr(
+        controller,
+        "generate_random_string",
+        lambda: next(random_keys),
+    )
+
+    file_path, file_name = controller.generate_unique_filepath(
+        orig_file_name="test.txt",
+        project_id="project-1",
+    )
+
+    assert file_path == str(tmp_path / "def_test.txt")
+    assert file_name == "def_test.txt"

@@ -1,13 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
-from fastapi.testclient import TestClient
 
-from main import app
-
-client = TestClient(app)
-
-
-def test_generate_success():
+def test_generate_success(app, client):
     mock_controller = MagicMock()
     mock_controller.generate = AsyncMock(
         return_value={
@@ -48,7 +42,7 @@ def test_generate_success():
     )
 
 
-def test_generate_empty_query():
+def test_generate_empty_query(app, client):
     response = client.post(
         "/api/v1/rag/generate",
         json={
@@ -59,7 +53,7 @@ def test_generate_empty_query():
     assert response.status_code == 422
 
 
-def test_generate_invalid_limit():
+def test_generate_invalid_limit(app, client):
     response = client.post(
         "/api/v1/rag/generate",
         json={
@@ -71,7 +65,7 @@ def test_generate_invalid_limit():
     assert response.status_code == 422
 
 
-def test_generate_value_error():
+def test_generate_value_error(app, client):
     mock_controller = MagicMock()
     mock_controller.generate = AsyncMock(
         side_effect=ValueError("Query cannot be empty")
@@ -90,7 +84,7 @@ def test_generate_value_error():
     assert response.json()["detail"] == "Query cannot be empty"
 
 
-def test_generate_internal_error():
+def test_generate_internal_error(app, client):
     mock_controller = MagicMock()
     mock_controller.generate = AsyncMock(side_effect=RuntimeError("Generation failed"))
 
@@ -107,7 +101,7 @@ def test_generate_internal_error():
     assert response.json()["detail"] == "Failed to generate response"
 
 
-def test_search_success():
+def test_search_success(app, client):
     mock_controller = MagicMock()
     mock_controller.search = AsyncMock(
         return_value=[
@@ -142,7 +136,7 @@ def test_search_success():
     )
 
 
-def test_search_value_error():
+def test_search_value_error(app, client):
     mock_controller = MagicMock()
     mock_controller.search = AsyncMock(side_effect=ValueError("Query cannot be empty"))
 
@@ -159,7 +153,7 @@ def test_search_value_error():
     assert response.json()["detail"] == "Query cannot be empty"
 
 
-def test_search_internal_error():
+def test_search_internal_error(app, client):
     mock_controller = MagicMock()
     mock_controller.search = AsyncMock(side_effect=RuntimeError("Search failed"))
 
@@ -176,7 +170,7 @@ def test_search_internal_error():
     assert response.json()["detail"] == "Failed to search documents"
 
 
-def test_index_success():
+def test_index_success(app, client):
     mock_controller = MagicMock()
     mock_controller.index = AsyncMock(
         return_value={
@@ -206,7 +200,7 @@ def test_index_success():
     )
 
 
-def test_index_value_error():
+def test_index_value_error(app, client):
     mock_controller = MagicMock()
     mock_controller.index = AsyncMock(
         side_effect=ValueError("Project ID cannot be empty")
@@ -222,7 +216,7 @@ def test_index_value_error():
     assert response.json()["detail"] == "Project ID cannot be empty"
 
 
-def test_index_internal_error():
+def test_index_internal_error(app, client):
     mock_controller = MagicMock()
     mock_controller.index = AsyncMock(side_effect=RuntimeError("Indexing failed"))
 
