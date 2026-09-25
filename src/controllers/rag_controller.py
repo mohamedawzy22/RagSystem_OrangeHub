@@ -1,4 +1,3 @@
-import logging
 from uuid import NAMESPACE_URL, uuid5
 
 from models import RAGMessage
@@ -12,8 +11,9 @@ from services.prompts.rag.english import (
     system_prompt,
 )
 from services.vectordb.vectordb_manager import VectorDBManager
+from utils.logger import get_logger
 
-logger = logging.getLogger("uvicorn.error")
+logger = get_logger(__name__)
 
 
 class RAGController:

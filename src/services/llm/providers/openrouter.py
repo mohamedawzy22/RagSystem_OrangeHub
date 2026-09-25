@@ -1,11 +1,11 @@
-import logging
-
 from openai import AsyncOpenAI
+
+from utils.logger import get_logger
 
 from ..chat_interface import ChatModel
 from ..embedding_interface import EmbeddingModel
 
-logger = logging.getLogger("uvicorn")
+logger = get_logger(__name__)
 
 
 class OpenRouterChatModel(ChatModel):
@@ -109,6 +109,24 @@ class OpenRouterChatModel(ChatModel):
             )
             raise
 
+    async def health_check(self) -> bool:
+        try:
+            await self.client.models.retrieve(self.model_id)
+
+            logger.info(
+                "OpenRouter embedding model is healthy: %s",
+                self.model_id,
+            )
+
+            return True
+
+        except Exception:
+            logger.exception(
+                "OpenRouter embedding model health check failed: %s",
+                self.model_id,
+            )
+            return False
+
 
 class OpenRouterEmbeddingModel(EmbeddingModel):
     def __init__(
@@ -197,3 +215,21 @@ class OpenRouterEmbeddingModel(EmbeddingModel):
                 self.model_id,
             )
             raise
+
+    async def health_check(self) -> bool:
+        try:
+            await self.client.models.retrieve(self.model_id)
+
+            logger.info(
+                "OpenRouter embedding model is healthy: %s",
+                self.model_id,
+            )
+
+            return True
+
+        except Exception:
+            logger.exception(
+                "OpenRouter embedding model health check failed: %s",
+                self.model_id,
+            )
+            return False

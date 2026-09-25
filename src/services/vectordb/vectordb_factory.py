@@ -1,12 +1,11 @@
-import logging
-
 from helpers.config import Setting
+from utils.logger import get_logger
 
 from .providers.qdrant import QdrantVectorDB
 from .vector_db_enum import VectorDBProvider
 from .vector_db_interface import VectorDB
 
-logger = logging.getLogger("uvicorn")
+logger = get_logger(__name__)
 
 
 class VectorDBFactory:

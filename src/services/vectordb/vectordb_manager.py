@@ -1,10 +1,10 @@
-import logging
+from utils.logger import get_logger
 
 from .vector_db_enum import VectorDBProvider
 from .vector_db_interface import VectorDB
 from .vectordb_factory import VectorDBFactory
 
-logger = logging.getLogger("uvicorn")
+logger = get_logger(__name__)
 
 
 class VectorDBManager:

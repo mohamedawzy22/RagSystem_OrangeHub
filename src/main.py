@@ -1,4 +1,3 @@
-import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -11,21 +10,28 @@ from services.llm.llm_factory import ModelFactory
 from services.llm.llm_manager import ModelManager
 from services.vectordb.vectordb_factory import VectorDBFactory
 from services.vectordb.vectordb_manager import VectorDBManager
+from utils.logger import get_logger, setup_logging
 
-logger = logging.getLogger("uvicorn")
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-
     settings = get_setting()
+
+    setup_logging(settings.LOG_LEVEL)
+
+    logger.info(
+        "Starting %s version=%s",
+        settings.APP_NAME,
+        settings.APP_VERSION,
+    )
 
     # -------------------------
     # MongoDB
     # -------------------------
 
     app.mongo_conn = AsyncIOMotorClient(settings.MONGODB_URL)
-
     app.db_client = app.mongo_conn[settings.MONGODB_DATABASE]
 
     logger.info("MongoDB connection initialized")
@@ -35,11 +41,10 @@ async def lifespan(app: FastAPI):
     # -------------------------
 
     model_factory = ModelFactory(settings)
-
     model_manager = ModelManager(model_factory)
 
     model_manager.load_models()
-
+    await model_manager.health_check_models()
     app.model_manager = model_manager
 
     logger.info("LLM models initialized")
@@ -49,7 +54,6 @@ async def lifespan(app: FastAPI):
     # -------------------------
 
     vector_db_factory = VectorDBFactory(settings)
-
     vector_db_manager = VectorDBManager(vector_db_factory)
 
     vector_db_manager.load_databases()
@@ -68,7 +72,7 @@ async def lifespan(app: FastAPI):
 
     app.rag_controller = RAGController(
         chat_model=model_manager.get_selected_chat_model(),
-        embedding_model=(model_manager.get_selected_embedding_model()),
+        embedding_model=model_manager.get_selected_embedding_model(),
         vector_db_manager=vector_db_manager,
         db_client=app.db_client,
     )
@@ -88,9 +92,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-
 app.include_router(base.base_router)
-
 app.include_router(data.data_router)
-
 app.include_router(rag.rag_router)

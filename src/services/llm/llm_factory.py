@@ -1,10 +1,9 @@
-import logging
-
 from helpers.config import (
     ChatModelSettings,
     EmbeddingModelSettings,
     Setting,
 )
+from utils.logger import get_logger
 
 from .chat_interface import ChatModel
 from .embedding_interface import EmbeddingModel
@@ -17,7 +16,7 @@ from .providers.openrouter import (
     OpenRouterEmbeddingModel,
 )
 
-logger = logging.getLogger("uvicorn")
+logger = get_logger(__name__)
 
 
 class ModelFactory:
@@ -29,7 +28,7 @@ class ModelFactory:
         config: ChatModelSettings,
     ) -> ChatModel:
 
-        logger.info(
+        logger.debug(
             "Creating chat model: provider=%s | model=%s",
             config.provider,
             config.model,
@@ -60,7 +59,7 @@ class ModelFactory:
         config: EmbeddingModelSettings,
     ) -> EmbeddingModel:
 
-        logger.info(
+        logger.debug(
             "Creating embedding model: provider=%s | model=%s | dimension=%s",
             config.provider,
             config.model,

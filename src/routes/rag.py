@@ -1,5 +1,3 @@
-import logging
-
 from fastapi import APIRouter, HTTPException, Request
 
 from routes.schemes.rag import (
@@ -8,8 +6,9 @@ from routes.schemes.rag import (
     SearchRequest,
     SearchResponse,
 )
+from utils.logger import get_logger
 
-logger = logging.getLogger("uvicorn.error")
+logger = get_logger(__name__)
 
 
 rag_router = APIRouter(

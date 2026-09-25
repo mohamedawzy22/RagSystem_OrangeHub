@@ -1,12 +1,12 @@
-import logging
-
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models
+
+from utils.logger import get_logger
 
 from ..vector_db_enum import DistanceMetric
 from ..vector_db_interface import VectorDB
 
-logger = logging.getLogger("uvicorn")
+logger = get_logger(__name__)
 
 
 class QdrantVectorDB(VectorDB):

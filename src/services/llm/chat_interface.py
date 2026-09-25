@@ -19,3 +19,7 @@ class ChatModel(ABC):
         max_tokens: int | None = None,
     ):
         pass
+
+    @abstractmethod
+    async def health_check(self) -> bool:
+        pass

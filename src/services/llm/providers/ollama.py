@@ -1,11 +1,11 @@
-import logging
-
 from ollama import AsyncClient
+
+from utils.logger import get_logger
 
 from ..chat_interface import ChatModel
 from ..embedding_interface import EmbeddingModel
 
-logger = logging.getLogger("uvicorn")
+logger = get_logger(__name__)
 
 
 class OllamaChatModel(ChatModel):
@@ -117,6 +117,24 @@ class OllamaChatModel(ChatModel):
             )
             raise
 
+    async def health_check(self) -> bool:
+        try:
+            await self.client.show(self.model_id)
+
+            logger.info(
+                "Ollama chat model is healthy: %s",
+                self.model_id,
+            )
+
+            return True
+
+        except Exception:
+            logger.exception(
+                "Ollama chat model health check failed: %s",
+                self.model_id,
+            )
+            return False
+
 
 class OllamaEmbeddingModel(EmbeddingModel):
     def __init__(
@@ -201,3 +219,21 @@ class OllamaEmbeddingModel(EmbeddingModel):
                 self.model_id,
             )
             raise
+
+    async def health_check(self) -> bool:
+        try:
+            await self.client.show(self.model_id)
+
+            logger.info(
+                "Ollama embedding model is healthy: %s",
+                self.model_id,
+            )
+
+            return True
+
+        except Exception:
+            logger.exception(
+                "Ollama embedding model health check failed: %s",
+                self.model_id,
+            )
+            return False

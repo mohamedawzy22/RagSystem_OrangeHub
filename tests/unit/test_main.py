@@ -8,6 +8,7 @@ def test_lifespan_initializes_and_closes_resources(monkeypatch):
     settings = MagicMock()
     settings.MONGODB_URL = "mongodb://test"
     settings.MONGODB_DATABASE = "test-db"
+    settings.LOG_LEVEL = "INFO"
 
     monkeypatch.setattr(main, "get_setting", lambda: settings)
 
@@ -23,6 +24,7 @@ def test_lifespan_initializes_and_closes_resources(monkeypatch):
 
     model_factory = MagicMock()
     model_manager = MagicMock()
+    model_manager.health_check_models = AsyncMock()
     model_manager.get_selected_chat_model.return_value = MagicMock()
     model_manager.get_selected_embedding_model.return_value = MagicMock()
 
@@ -78,5 +80,6 @@ def test_lifespan_initializes_and_closes_resources(monkeypatch):
     mongo_client.close.assert_called_once()
     model_manager.load_models.assert_called_once()
     vector_db_manager.load_databases.assert_called_once()
+    model_manager.health_check_models.assert_awaited_once()
     vector_db_manager.get_database.assert_called_once_with("default")
     vector_db.create_collection.assert_awaited_once()

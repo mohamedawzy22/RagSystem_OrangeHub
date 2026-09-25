@@ -263,3 +263,74 @@ async def test_stream_raises_when_fallback_fails():
 
     primary.stream.assert_called_once()
     fallback.stream.assert_called_once()
+
+
+def test_generate_skips_failed_primary_during_cooldown():
+    import asyncio
+    from unittest.mock import AsyncMock, MagicMock
+
+    from services.llm.fallback_chat import FallbackChatModel
+
+    primary = MagicMock()
+    primary.generate = AsyncMock(side_effect=RuntimeError("primary unavailable"))
+
+    fallback = MagicMock()
+    fallback.generate = AsyncMock(return_value="fallback response")
+
+    model = FallbackChatModel(
+        primary=primary,
+        fallback=fallback,
+        primary_name="primary",
+        fallback_name="fallback",
+        cooldown_seconds=60,
+    )
+
+    async def run():
+        first = await model.generate("test")
+        second = await model.generate("test")
+
+        assert first == "fallback response"
+        assert second == "fallback response"
+
+    asyncio.run(run())
+
+    assert primary.generate.await_count == 1
+    assert fallback.generate.await_count == 2
+
+
+def test_generate_retries_primary_after_cooldown():
+    import asyncio
+    from unittest.mock import AsyncMock, MagicMock
+
+    from services.llm.fallback_chat import FallbackChatModel
+
+    primary = MagicMock()
+    primary.generate = AsyncMock(
+        side_effect=[
+            RuntimeError("primary unavailable"),
+            "primary recovered",
+        ]
+    )
+
+    fallback = MagicMock()
+    fallback.generate = AsyncMock(return_value="fallback response")
+
+    model = FallbackChatModel(
+        primary=primary,
+        fallback=fallback,
+        primary_name="primary",
+        fallback_name="fallback",
+        cooldown_seconds=0,
+    )
+
+    async def run():
+        first = await model.generate("test")
+        second = await model.generate("test")
+
+        assert first == "fallback response"
+        assert second == "primary recovered"
+
+    asyncio.run(run())
+
+    assert primary.generate.await_count == 2
+    assert fallback.generate.await_count == 1

@@ -1,10 +1,7 @@
 from pathlib import Path
 
-from pydantic import BaseModel
-from pydantic_settings import (
-    BaseSettings,
-    SettingsConfigDict,
-)
+from pydantic import BaseModel, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from services.vectordb.vector_db_enum import DistanceMetric
 
@@ -27,6 +24,8 @@ class Setting(BaseSettings):
     APP_NAME: str
     APP_VERSION: str
 
+    LOG_LEVEL: str = "INFO"
+
     FILE_ALLOWED_TYPES: list[str]
     FILE_MAX_SIZE: int
     FILE_DEFAULT_CHUNK_SIZE: int
@@ -42,6 +41,8 @@ class Setting(BaseSettings):
 
     CHAT_PRIMARY_MODEL: str
     CHAT_FALLBACK_MODEL: str
+    CHAT_FALLBACK_COOLDOWN_SECONDS: int = 60
+
     EMBEDDING_MODEL: str
 
     QDRANT_URL: str
@@ -54,6 +55,39 @@ class Setting(BaseSettings):
         env_file=ENV_FILE,
         extra="ignore",
     )
+
+    @model_validator(mode="after")
+    def validate_models(self):
+        if self.CHAT_PRIMARY_MODEL not in self.CHAT_MODELS:
+            raise ValueError(
+                f"Chat primary model '{self.CHAT_PRIMARY_MODEL}' is not configured"
+            )
+
+        if self.CHAT_FALLBACK_MODEL not in self.CHAT_MODELS:
+            raise ValueError(
+                f"Chat fallback model '{self.CHAT_FALLBACK_MODEL}' is not configured"
+            )
+
+        if self.CHAT_PRIMARY_MODEL == self.CHAT_FALLBACK_MODEL:
+            raise ValueError("Chat primary and fallback models must be different")
+
+        if self.EMBEDDING_MODEL not in self.EMBEDDING_MODELS:
+            raise ValueError(
+                f"Embedding model '{self.EMBEDDING_MODEL}' is not configured"
+            )
+
+        if self.CHAT_FALLBACK_COOLDOWN_SECONDS < 0:
+            raise ValueError("CHAT_FALLBACK_COOLDOWN_SECONDS cannot be negative")
+
+        if self.QDRANT_VECTOR_SIZE <= 0:
+            raise ValueError("QDRANT_VECTOR_SIZE must be greater than zero")
+
+        embedding_dimension = self.EMBEDDING_MODELS[self.EMBEDDING_MODEL].dimension
+
+        if embedding_dimension != self.QDRANT_VECTOR_SIZE:
+            raise ValueError("Embedding dimension does not match Qdrant vector size")
+
+        return self
 
 
 def get_setting() -> Setting:
