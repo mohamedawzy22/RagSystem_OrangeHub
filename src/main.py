@@ -9,6 +9,7 @@ from routes import base, data
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+
     settings = get_setting()
 
     app.mongo_conn = AsyncIOMotorClient(settings.MONGODB_URL)
