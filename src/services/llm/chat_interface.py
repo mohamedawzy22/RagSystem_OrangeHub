@@ -19,3 +19,17 @@ class ChatModel(ABC):
         max_tokens: int | None = None,
     ):
         pass
+
+    @abstractmethod
+    async def health_check(self) -> bool:
+        pass
+
+    async def warm_up(self) -> None:
+        await self.generate(
+            prompt="Reply with OK",
+            temperature=0.0,
+            max_tokens=1,
+        )
+
+    async def close(self) -> None:
+        return None

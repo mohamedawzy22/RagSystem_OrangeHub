@@ -1,96 +1,68 @@
-import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from motor.motor_asyncio import AsyncIOMotorClient
 
-from controllers.rag_controller import RAGController
+from core.container import ApplicationContainer
+from core.exception_handlers import (
+    application_error_handler,
+    unhandled_exception_handler,
+)
+from core.exceptions import ApplicationError
 from helpers.config import get_setting
 from routes import base, data, rag
-from services.llm.llm_factory import ModelFactory
-from services.llm.llm_manager import ModelManager
-from services.vectordb.vectordb_factory import VectorDBFactory
-from services.vectordb.vectordb_manager import VectorDBManager
+from utils.logger import get_logger, setup_logging
 
-logger = logging.getLogger("uvicorn")
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-
     settings = get_setting()
 
-    # -------------------------
-    # MongoDB
-    # -------------------------
+    setup_logging(settings.LOG_LEVEL)
 
-    app.mongo_conn = AsyncIOMotorClient(settings.MONGODB_URL)
-
-    app.db_client = app.mongo_conn[settings.MONGODB_DATABASE]
-
-    logger.info("MongoDB connection initialized")
-
-    # -------------------------
-    # LLM
-    # -------------------------
-
-    model_factory = ModelFactory(settings)
-
-    model_manager = ModelManager(model_factory)
-
-    model_manager.load_models()
-
-    app.model_manager = model_manager
-
-    logger.info("LLM models initialized")
-
-    # -------------------------
-    # Vector Database
-    # -------------------------
-
-    vector_db_factory = VectorDBFactory(settings)
-
-    vector_db_manager = VectorDBManager(vector_db_factory)
-
-    vector_db_manager.load_databases()
-
-    vector_db = vector_db_manager.get_database("default")
-
-    await vector_db.create_collection()
-
-    app.vector_db_manager = vector_db_manager
-
-    logger.info("Vector database initialized")
-
-    # -------------------------
-    # RAG Controller
-    # -------------------------
-
-    app.rag_controller = RAGController(
-        chat_model=model_manager.get_selected_chat_model(),
-        embedding_model=(model_manager.get_selected_embedding_model()),
-        vector_db_manager=vector_db_manager,
-        db_client=app.db_client,
+    logger.info(
+        "Starting %s version=%s",
+        settings.APP_NAME,
+        settings.APP_VERSION,
     )
 
-    logger.info("RAG controller initialized")
+    container = ApplicationContainer(settings)
 
-    yield
+    try:
+        await container.initialize()
 
-    # -------------------------
-    # Shutdown
-    # -------------------------
+        app.state.container = container
+        app.state.mongo_conn = container.mongo_conn
+        app.state.db_client = container.db_client
+        app.state.model_manager = container.model_manager
+        app.state.vector_db_manager = container.vector_db_manager
+        app.state.rag_controller = container.rag_controller
 
-    app.mongo_conn.close()
+        yield
 
-    logger.info("MongoDB connection closed")
+    finally:
+        logger.info("Application shutdown started")
+
+        await container.close()
+
+        logger.info("Application shutdown completed")
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+)
 
+app.add_exception_handler(
+    ApplicationError,
+    application_error_handler,
+)
+
+app.add_exception_handler(
+    Exception,
+    unhandled_exception_handler,
+)
 
 app.include_router(base.base_router)
-
 app.include_router(data.data_router)
-
 app.include_router(rag.rag_router)

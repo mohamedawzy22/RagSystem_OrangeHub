@@ -1,4 +1,3 @@
-import logging
 import os
 from dataclasses import dataclass
 from statistics import mean, median
@@ -7,12 +6,10 @@ import pymupdf
 from langchain_community.document_loaders import TextLoader
 from langchain_text_splitters import CharacterTextSplitter
 
-from controllers.base_controller import BaseController
 from models import ProcessingEnum
+from utils.logger import get_logger
 
-from .project_controller import ProjectController
-
-logger = logging.getLogger("uvicorn.error")
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -21,18 +18,14 @@ class Document:
     metadata: dict
 
 
-class ProcessController(BaseController):
+class DocumentProcessor:
     def __init__(
         self,
-        project_id: str,
+        project_path: str,
         chunk_size: int = 100,
         overlap_size: int = 20,
     ):
-        super().__init__()
-
-        self.project_id = project_id
-
-        self.project_path = ProjectController().get_project_path(project_id=project_id)
+        self.project_path = project_path
 
         self._validate_chunk_config(
             chunk_size=chunk_size,
@@ -42,12 +35,57 @@ class ProcessController(BaseController):
         self.chunk_size = chunk_size
         self.overlap_size = overlap_size
 
-    def get_file_extension(self, file_id: str) -> str:
-        return os.path.splitext(file_id)[-1].lower()
+        logger.info(
+            "Document processor initialized: chunk_size=%s | overlap=%s",
+            self.chunk_size,
+            self.overlap_size,
+        )
 
-    def get_file_loader(self, file_id: str):
+    @staticmethod
+    def _validate_chunk_config(
+        chunk_size: int,
+        overlap_size: int,
+    ) -> None:
+        if not isinstance(chunk_size, int):
+            raise TypeError(
+                "chunk_size must be an integer",
+            )
 
-        file_ext = self.get_file_extension(file_id=file_id)
+        if not isinstance(overlap_size, int):
+            raise TypeError(
+                "overlap_size must be an integer",
+            )
+
+        if chunk_size <= 0:
+            raise ValueError(
+                "chunk_size must be greater than zero",
+            )
+
+        if overlap_size < 0:
+            raise ValueError(
+                "overlap_size cannot be negative",
+            )
+
+        if overlap_size >= chunk_size:
+            raise ValueError(
+                "overlap_size must be smaller than chunk_size",
+            )
+
+    @staticmethod
+    def get_file_extension(
+        file_id: str,
+    ) -> str:
+        return os.path.splitext(
+            file_id,
+        )[-1].lower()
+
+    def get_file_loader(
+        self,
+        file_id: str,
+    ):
+        file_ext = self.get_file_extension(
+            file_id=file_id,
+        )
 
         file_path = os.path.join(
             self.project_path,
@@ -56,7 +94,7 @@ class ProcessController(BaseController):
 
         if not os.path.exists(file_path):
             logger.error(
-                "File not found: file_id=%s, path=%s",
+                "File not found: file_id=%s | path=%s",
                 file_id,
                 file_path,
             )
@@ -81,17 +119,19 @@ class ProcessController(BaseController):
     def get_file_content(
         self,
         file_id: str,
-    ):
-
-        loader = self.get_file_loader(file_id=file_id)
+    ) -> list[Document] | None:
+        loader = self.get_file_loader(
+            file_id=file_id,
+        )
 
         if loader is None:
             return None
 
         try:
-            file_ext = self.get_file_extension(file_id=file_id)
+            file_ext = self.get_file_extension(
+                file_id=file_id,
+            )
 
-            # TXT
             if file_ext == ProcessingEnum.TXT.value:
                 documents = loader.load()
 
@@ -104,32 +144,34 @@ class ProcessController(BaseController):
                     if doc.page_content.strip()
                 ]
 
-            # PDF
             if file_ext == ProcessingEnum.PDF.value:
                 pdf = pymupdf.open(loader)
 
                 documents = []
 
-                for page_number, page in enumerate(pdf):
-                    text = page.get_text("text").strip()
+                try:
+                    for page_number, page in enumerate(pdf):
+                        text = page.get_text(
+                            "text",
+                        ).strip()
 
-                    if not text:
-                        continue
+                        if not text:
+                            continue
 
-                    documents.append(
-                        Document(
-                            page_content=text,
-                            metadata={
-                                "source": file_id,
-                                "page": page_number + 1,
-                            },
+                        documents.append(
+                            Document(
+                                page_content=text,
+                                metadata={
+                                    "source": file_id,
+                                    "page": page_number + 1,
+                                },
+                            )
                         )
-                    )
-
-                pdf.close()
+                finally:
+                    pdf.close()
 
                 logger.info(
-                    "Loaded PDF successfully: file_id=%s, pages=%s",
+                    "Loaded PDF successfully: file_id=%s | pages=%s",
                     file_id,
                     len(documents),
                 )
@@ -148,13 +190,12 @@ class ProcessController(BaseController):
 
     def process_file_content(
         self,
-        file_content: list,
+        file_content: list[Document],
         file_id: str,
     ):
-
         logger.info(
             "Processing file: "
-            "file_id=%s, chunk_size=%s characters, "
+            "file_id=%s | chunk_size=%s characters | "
             "overlap=%s characters",
             file_id,
             self.chunk_size,
@@ -166,6 +207,7 @@ class ProcessController(BaseController):
                 "No content found for file_id=%s",
                 file_id,
             )
+
             return []
 
         text_splitter = CharacterTextSplitter(
@@ -175,9 +217,9 @@ class ProcessController(BaseController):
             length_function=len,
         )
 
-        file_content_texts = [rec.page_content for rec in file_content]
+        file_content_texts = [record.page_content for record in file_content]
 
-        file_content_metadata = [rec.metadata for rec in file_content]
+        file_content_metadata = [record.metadata for record in file_content]
 
         chunks = text_splitter.create_documents(
             file_content_texts,
@@ -189,7 +231,9 @@ class ProcessController(BaseController):
                 {
                     "file_id": file_id,
                     "chunk_index": index,
-                    "chunk_size": len(chunk.page_content),
+                    "chunk_size": len(
+                        chunk.page_content,
+                    ),
                 }
             )
 
@@ -201,26 +245,10 @@ class ProcessController(BaseController):
         return chunks
 
     @staticmethod
-    def _validate_chunk_config(
-        chunk_size: int,
-        overlap_size: int,
-    ):
-
-        if chunk_size <= 0:
-            raise ValueError("chunk_size must be greater than zero")
-
-        if overlap_size < 0:
-            raise ValueError("overlap_size cannot be negative")
-
-        if overlap_size >= chunk_size:
-            raise ValueError("overlap_size must be smaller than chunk_size")
-
-    @staticmethod
     def _log_chunk_statistics(
-        chunks: list[Document],
+        chunks: list,
         file_id: str,
-    ):
-
+    ) -> None:
         if not chunks:
             logger.warning(
                 "No chunks generated for file_id=%s",
@@ -232,8 +260,7 @@ class ProcessController(BaseController):
 
         logger.info(
             "Chunk statistics | "
-            "file_id=%s | "
-            "chunks=%s | "
+            "file_id=%s | chunks=%s | "
             "min=%s characters | "
             "max=%s characters | "
             "mean=%.2f characters | "

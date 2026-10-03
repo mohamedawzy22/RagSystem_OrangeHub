@@ -21,6 +21,10 @@ class VectorDB(ABC):
     async def search(
         self,
         vector: list[float],
+        project_id: str,
         limit: int = 5,
     ) -> list[dict]:
         pass
+
+    async def close(self) -> None:
+        return None

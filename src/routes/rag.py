@@ -1,15 +1,18 @@
-import logging
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, Path
 
+from controllers.rag_controller import RAGController
+from core.dependencies import get_rag_controller
 from routes.schemes.rag import (
     GenerateRequest,
     GenerateResponse,
     SearchRequest,
     SearchResponse,
 )
+from utils.logger import get_logger
 
-logger = logging.getLogger("uvicorn.error")
+logger = get_logger(__name__)
 
 
 rag_router = APIRouter(
@@ -18,120 +21,73 @@ rag_router = APIRouter(
 )
 
 
+ProjectId = Annotated[
+    str,
+    Path(
+        min_length=1,
+        max_length=128,
+        pattern=r"^[A-Za-z0-9]+$",
+    ),
+]
+
+
 @rag_router.post("/index/{project_id}")
 async def index(
-    request: Request,
-    project_id: str,
+    project_id: ProjectId,
+    rag_controller: RAGController = Depends(
+        get_rag_controller,
+    ),
 ):
     logger.info(
-        "RAG INDEX ROUTE REACHED: project_id=%s",
+        "RAG indexing started: project_id=%s",
         project_id,
     )
 
-    try:
-        return await request.app.rag_controller.index(
-            project_id=project_id,
-        )
-
-    except ValueError as exc:
-        logger.error(
-            "RAG indexing validation error: %s",
-            exc,
-        )
-
-        raise HTTPException(
-            status_code=400,
-            detail=str(exc),
-        ) from exc
-
-    except Exception:
-        logger.exception(
-            "RAG indexing failed: project_id=%s",
-            project_id,
-        )
-
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to index project",
-        )
+    return await rag_controller.index(
+        project_id=project_id,
+    )
 
 
 @rag_router.post(
-    "/search",
+    "/search/{project_id}",
     response_model=SearchResponse,
 )
 async def search(
-    request: Request,
+    project_id: ProjectId,
     search_request: SearchRequest,
+    rag_controller: RAGController = Depends(
+        get_rag_controller,
+    ),
 ):
-    try:
-        results = await request.app.rag_controller.search(
-            query=search_request.query,
-            limit=search_request.limit,
-        )
+    results = await rag_controller.search(
+        project_id=project_id,
+        query=search_request.query,
+        limit=search_request.limit,
+    )
 
-        return SearchResponse(
-            query=search_request.query,
-            results=results,
-        )
-
-    except ValueError as exc:
-        logger.error(
-            "RAG search validation error: %s",
-            exc,
-        )
-
-        raise HTTPException(
-            status_code=400,
-            detail=str(exc),
-        ) from exc
-
-    except Exception:
-        logger.exception(
-            "RAG search failed",
-        )
-
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to search documents",
-        )
+    return SearchResponse(
+        query=search_request.query,
+        results=results,
+    )
 
 
 @rag_router.post(
-    "/generate",
+    "/generate/{project_id}",
     response_model=GenerateResponse,
 )
 async def generate(
-    request: Request,
+    project_id: ProjectId,
     generate_request: GenerateRequest,
+    rag_controller: RAGController = Depends(
+        get_rag_controller,
+    ),
 ):
-    try:
-        result = await request.app.rag_controller.generate(
-            query=generate_request.query,
-            limit=generate_request.limit,
-        )
+    result = await rag_controller.generate(
+        project_id=project_id,
+        query=generate_request.query,
+        limit=generate_request.limit,
+    )
 
-        return GenerateResponse(
-            **result,
-        )
-
-    except ValueError as exc:
-        logger.error(
-            "RAG generation validation error: %s",
-            exc,
-        )
-
-        raise HTTPException(
-            status_code=400,
-            detail=str(exc),
-        ) from exc
-
-    except Exception:
-        logger.exception(
-            "RAG generation failed",
-        )
-
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to generate response",
-        )
+    return GenerateResponse(
+        **result,
+    )

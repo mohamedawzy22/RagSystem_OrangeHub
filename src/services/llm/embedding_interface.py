@@ -12,3 +12,13 @@ class EmbeddingModel(ABC):
         texts: list[str],
     ) -> list[list[float]]:
         pass
+
+    @abstractmethod
+    async def health_check(self) -> bool:
+        pass
+
+    async def warm_up(self) -> None:
+        await self.embed_text("warmup")
+
+    async def close(self) -> None:
+        return None
