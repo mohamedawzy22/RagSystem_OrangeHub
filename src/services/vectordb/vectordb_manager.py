@@ -26,3 +26,21 @@ class VectorDBManager:
             raise ValueError(f"Vector database '{name}' is not configured")
 
         return self._databases[name]
+
+    async def close(self) -> None:
+        logger.info("Closing vector database clients...")
+
+        for name, database in self._databases.items():
+            try:
+                await database.close()
+                logger.debug(
+                    "Closed vector database: %s",
+                    name,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to close vector database: %s",
+                    name,
+                )
+
+        logger.info("Vector database clients closed")
