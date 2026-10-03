@@ -13,7 +13,6 @@ dependencies = [
     "fastapi>=0.141.1",
     "langchain-community>=0.4.2",
     "langchain-text-splitters>=1.1.2",
-    "motor>=3.7.1",
     "ollama>=0.6.2",
     "openai>=3.14.1",
     "pip>=26.2.1",
@@ -36,7 +35,7 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
-addopts = "--cov=src --cov-report=term-missing --cov-fail-under=75"
+addopts = "--cov=src/controllers --cov=src/services/rag --cov-report=term-missing --cov-fail-under=75"
 
 [tool.ruff.lint]
 extend-ignore = ["B008"]

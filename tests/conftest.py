@@ -1,36 +1,33 @@
-import os
-from unittest.mock import MagicMock
+from types import SimpleNamespace
 
 import pytest
-from fastapi.testclient import TestClient
-
-os.environ.setdefault("EMBEDDING_MODEL", "bge-m3")
-os.environ.setdefault("QDRANT_URL", "http://localhost:6333")
-os.environ.setdefault("QDRANT_COLLECTION_NAME", "test_collection")
-os.environ.setdefault("QDRANT_VECTOR_SIZE", "1024")
-os.environ.setdefault("QDRANT_DISTANCE", "Cosine")
-
-
-pytest_plugins = (
-    "tests.fixtures.llm",
-    "tests.fixtures.rag",
-)
 
 
 @pytest.fixture
-def app(monkeypatch):
-    from main import app as fastapi_app
-
-    monkeypatch.setattr(
-        fastapi_app,
-        "db_client",
-        MagicMock(),
-        raising=False,
-    )
-
-    return fastapi_app
+def sample_documents() -> list[dict]:
+    return [
+        {
+            "text": "Lebanon is a country in the Middle East.",
+            "score": 0.91,
+        },
+        {
+            "text": "Beirut is the capital of Lebanon.",
+            "score": 0.84,
+        },
+    ]
 
 
 @pytest.fixture
-def client(app):
-    return TestClient(app)
+def sample_chunks() -> list[SimpleNamespace]:
+    return [
+        SimpleNamespace(
+            id="chunk-1",
+            chunk_text="Lebanon is a country in the Middle East.",
+            chunk_asset_id="asset-1",
+        ),
+        SimpleNamespace(
+            id="chunk-2",
+            chunk_text="Beirut is the capital of Lebanon.",
+            chunk_asset_id="asset-1",
+        ),
+    ]
