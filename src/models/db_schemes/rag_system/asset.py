@@ -20,13 +20,19 @@ class Asset(BaseModel):
     def get_indexes(cls):
         return [
             {
-                "key": [("asset_project_id", 1)],
-                "name": "asset_project_id_index_1",
-                "unique": False,
-            },
-            {
-                "key": [("asset_project_id", 1), ("asset_name", 1)],
+                "key": [
+                    ("asset_project_id", 1),
+                    ("asset_name", 1),
+                ],
                 "name": "asset_project_id_name_index_1",
                 "unique": True,
+            },
+            {
+                "key": [
+                    ("asset_project_id", 1),
+                    ("asset_type", 1),
+                ],
+                "name": "idx_asset_project_id_type",
+                "unique": False,
             },
         ]
