@@ -11,6 +11,7 @@ from core.exceptions import ApplicationError
 from helpers.config import get_setting
 from routes import base, data, rag
 from utils.logger import get_logger, setup_logging
+from utils.metrics import setup_metrics
 
 logger = get_logger(__name__)
 
@@ -52,6 +53,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     lifespan=lifespan,
 )
+
+setup_metrics(app)
 
 app.add_exception_handler(
     ApplicationError,

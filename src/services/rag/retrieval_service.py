@@ -1,6 +1,16 @@
+import time
+
 from services.llm.embedding_interface import EmbeddingModel
 from services.vectordb.vector_db_interface import VectorDB
 from utils.logger import get_logger
+from utils.metrics import (
+    RETRIEVAL_DURATION,
+    RETRIEVAL_EMBEDDING_DURATION,
+    RETRIEVAL_FAILURES,
+    RETRIEVAL_REQUESTS,
+    RETRIEVAL_RESULTS,
+    RETRIEVAL_VECTOR_SEARCH_DURATION,
+)
 
 logger = get_logger(__name__)
 
@@ -14,7 +24,9 @@ class RetrievalService:
         self.embedding_model = embedding_model
         self.vector_db = vector_db
 
-        logger.info("Retrieval service initialized successfully")
+        logger.info(
+            "Retrieval service initialized successfully",
+        )
 
     async def search(
         self,
@@ -32,10 +44,26 @@ class RetrievalService:
             limit,
         )
 
+        # Count every retrieval attempt,
+        # including failed requests.
+        RETRIEVAL_REQUESTS.inc()
+
+        retrieval_start_time = time.perf_counter()
+
         try:
-            query_embedding = await self.embedding_model.embed_text(
-                query,
-            )
+            # ------------------------------------------------
+            # Query embedding timing
+            # ------------------------------------------------
+            embedding_start_time = time.perf_counter()
+
+            try:
+                query_embedding = await self.embedding_model.embed_text(
+                    query,
+                )
+            finally:
+                RETRIEVAL_EMBEDDING_DURATION.observe(
+                    time.perf_counter() - embedding_start_time,
+                )
 
             logger.info(
                 "Query embedding generated: project_id=%s | dimension=%s",
@@ -43,11 +71,21 @@ class RetrievalService:
                 len(query_embedding),
             )
 
-            results = await self.vector_db.search(
-                vector=query_embedding,
-                limit=limit,
-                project_id=project_id,
-            )
+            # ------------------------------------------------
+            # Vector search timing
+            # ------------------------------------------------
+            vector_search_start_time = time.perf_counter()
+
+            try:
+                results = await self.vector_db.search(
+                    vector=query_embedding,
+                    limit=limit,
+                    project_id=project_id,
+                )
+            finally:
+                RETRIEVAL_VECTOR_SEARCH_DURATION.observe(
+                    time.perf_counter() - vector_search_start_time,
+                )
 
             search_results = []
 
@@ -73,6 +111,11 @@ class RetrievalService:
                     }
                 )
 
+            # Count only usable retrieved chunks.
+            RETRIEVAL_RESULTS.inc(
+                len(search_results),
+            )
+
             logger.info(
                 "Retrieval completed successfully: project_id=%s | results=%s",
                 project_id,
@@ -82,8 +125,19 @@ class RetrievalService:
             return search_results
 
         except Exception:
+            RETRIEVAL_FAILURES.inc()
+
             logger.exception(
                 "Retrieval failed: project_id=%s",
                 project_id,
             )
+
             raise
+
+        finally:
+            # ------------------------------------------------
+            # Total retrieval timing
+            # ------------------------------------------------
+            RETRIEVAL_DURATION.observe(
+                time.perf_counter() - retrieval_start_time,
+            )

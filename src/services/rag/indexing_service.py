@@ -1,3 +1,4 @@
+import time
 from uuid import NAMESPACE_URL, uuid5
 
 from models import RAGMessage
@@ -6,6 +7,14 @@ from models.project_model import ProjectModel
 from services.llm.embedding_interface import EmbeddingModel
 from services.vectordb.vector_db_interface import VectorDB
 from utils.logger import get_logger
+from utils.metrics import (
+    EMBEDDING_DURATION,
+    INDEXING_BATCHES,
+    INDEXING_CHUNKS,
+    INDEXING_DURATION,
+    INDEXING_FAILURES,
+    VECTOR_STORE_DURATION,
+)
 
 logger = get_logger(__name__)
 
@@ -79,6 +88,8 @@ class IndexingService:
             batch_size,
         )
 
+        indexing_start_time = time.perf_counter()
+
         try:
             project = await self.project_model.get_project_or_create_one(
                 project_id=project_id,
@@ -120,9 +131,19 @@ class IndexingService:
                     len(texts),
                 )
 
-                embeddings = await self.embedding_model.embed_documents(
-                    texts,
-                )
+                # --------------------------------------------
+                # Embedding timing
+                # --------------------------------------------
+                embedding_start_time = time.perf_counter()
+
+                try:
+                    embeddings = await self.embedding_model.embed_documents(
+                        texts,
+                    )
+                finally:
+                    EMBEDDING_DURATION.observe(
+                        time.perf_counter() - embedding_start_time,
+                    )
 
                 if len(embeddings) != len(chunks):
                     raise RuntimeError(
@@ -189,12 +210,28 @@ class IndexingService:
                     len(vectors),
                 )
 
-                await self.vector_db.upsert(
-                    vectors,
-                )
+                # --------------------------------------------
+                # Vector store timing
+                # --------------------------------------------
+                vector_store_start_time = time.perf_counter()
 
-                total_indexed_chunks += len(
-                    vectors,
+                try:
+                    await self.vector_db.upsert(
+                        vectors,
+                    )
+                finally:
+                    VECTOR_STORE_DURATION.observe(
+                        time.perf_counter() - vector_store_start_time,
+                    )
+
+                # --------------------------------------------
+                # Successful batch metrics
+                # --------------------------------------------
+                total_indexed_chunks += len(vectors)
+
+                INDEXING_BATCHES.inc()
+                INDEXING_CHUNKS.inc(
+                    len(vectors),
                 )
 
                 total_assets.update(chunk.chunk_asset_id for chunk in chunks)
@@ -235,8 +272,19 @@ class IndexingService:
             }
 
         except Exception:
+            INDEXING_FAILURES.inc()
+
             logger.exception(
                 "Indexing failed for project_id=%s",
                 project_id,
             )
+
             raise
+
+        finally:
+            # --------------------------------------------
+            # Total indexing duration
+            # --------------------------------------------
+            INDEXING_DURATION.observe(
+                time.perf_counter() - indexing_start_time,
+            )

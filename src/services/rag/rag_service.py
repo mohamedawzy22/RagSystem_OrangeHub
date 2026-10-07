@@ -1,3 +1,5 @@
+import time
+
 from models import RAGMessage
 from services.llm.chat_interface import ChatModel
 from services.prompts.rag.english import (
@@ -8,6 +10,14 @@ from services.prompts.rag.english import (
 from services.rag.indexing_service import IndexingService
 from services.rag.retrieval_service import RetrievalService
 from utils.logger import get_logger
+from utils.metrics import (
+    GENERATION_DURATION,
+    GENERATION_FAILURES,
+    GENERATION_NO_CONTEXT,
+    GENERATION_REQUESTS,
+    LLM_GENERATION_DURATION,
+    PROMPT_BUILD_DURATION,
+)
 
 logger = get_logger(__name__)
 
@@ -23,7 +33,9 @@ class RAGService:
         self.retrieval_service = retrieval_service
         self.indexing_service = indexing_service
 
-        logger.info("RAG service initialized successfully")
+        logger.info(
+            "RAG service initialized successfully",
+        )
 
     async def index(
         self,
@@ -106,19 +118,38 @@ class RAGService:
             limit,
         )
 
+        GENERATION_REQUESTS.inc()
+
+        generation_start_time = time.perf_counter()
+
         try:
+            # ------------------------------------------------
+            # Retrieval
+            # ------------------------------------------------
             results = await self.retrieval_service.search(
                 project_id=project_id,
                 query=query,
                 limit=limit,
             )
 
-            full_prompt, documents = self._build_prompt(
-                query=query,
-                results=results,
-            )
+            # ------------------------------------------------
+            # Prompt construction timing
+            # ------------------------------------------------
+            prompt_start_time = time.perf_counter()
+
+            try:
+                full_prompt, documents = self._build_prompt(
+                    query=query,
+                    results=results,
+                )
+            finally:
+                PROMPT_BUILD_DURATION.observe(
+                    time.perf_counter() - prompt_start_time,
+                )
 
             if not results:
+                GENERATION_NO_CONTEXT.inc()
+
                 logger.info(
                     "No relevant documents found: project_id=%s",
                     project_id,
@@ -131,9 +162,19 @@ class RAGService:
                     "documents": [],
                 }
 
-            response = await self.chat_model.generate(
-                prompt=full_prompt,
-            )
+            # ------------------------------------------------
+            # LLM generation timing
+            # ------------------------------------------------
+            llm_start_time = time.perf_counter()
+
+            try:
+                response = await self.chat_model.generate(
+                    prompt=full_prompt,
+                )
+            finally:
+                LLM_GENERATION_DURATION.observe(
+                    time.perf_counter() - llm_start_time,
+                )
 
             logger.info(
                 "Generation completed successfully: project_id=%s",
@@ -148,8 +189,19 @@ class RAGService:
             }
 
         except Exception:
+            GENERATION_FAILURES.inc()
+
             logger.exception(
                 "Generation failed: project_id=%s",
                 project_id,
             )
+
             raise
+
+        finally:
+            # ------------------------------------------------
+            # Full RAG generation timing
+            # ------------------------------------------------
+            GENERATION_DURATION.observe(
+                time.perf_counter() - generation_start_time,
+            )
