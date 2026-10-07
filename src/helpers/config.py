@@ -48,12 +48,14 @@ class DatabaseConfig(BaseModel):
 
 class LLMConfig(BaseModel):
     openrouter_api_key: str | None
+    openrouter_base_url: str
     ollama_base_url: str | None
     ollama_keep_alive: int
 
-    ollama_request_timeout_seconds: int
-    ollama_chat_max_concurrency: int
-    ollama_embedding_max_concurrency: int
+    request_timeout_seconds: int
+    max_tokens: int
+    chat_max_concurrency: int
+    embedding_max_concurrency: int
 
     model_warmup_enabled: bool
     model_warmup_timeout_seconds: int
@@ -104,12 +106,13 @@ class Setting(BaseSettings):
     MODEL_WARMUP_TIMEOUT_SECONDS: int = 30
 
     OLLAMA_KEEP_ALIVE: int = 300
+    LLM_MAX_TOKENS: int = 300
 
-    OLLAMA_REQUEST_TIMEOUT_SECONDS: int = 120
+    LLM_REQUEST_TIMEOUT_SECONDS: int = 120
 
-    OLLAMA_CHAT_MAX_CONCURRENCY: int = 1
+    LLM_CHAT_MAX_CONCURRENCY: int = 1
 
-    OLLAMA_EMBEDDING_MAX_CONCURRENCY: int = 2
+    LLM_EMBEDDING_MAX_CONCURRENCY: int = 2
 
     # -------------------------
     # Retry
@@ -147,6 +150,7 @@ class Setting(BaseSettings):
     # -------------------------
 
     OPENROUTER_API_KEY: str | None = None
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     OLLAMA_BASE_URL: str | None = None
 
     # -------------------------
@@ -211,22 +215,23 @@ class Setting(BaseSettings):
         if self.CHAT_FALLBACK_COOLDOWN_SECONDS < 0:
             raise ValueError("CHAT_FALLBACK_COOLDOWN_SECONDS cannot be negative")
 
+        if self.LLM_MAX_TOKENS <= 0:
+            raise ValueError("LLM_MAX_TOKENS must be greater than zero")
+
         if self.MODEL_WARMUP_TIMEOUT_SECONDS <= 0:
             raise ValueError("MODEL_WARMUP_TIMEOUT_SECONDS must be greater than zero")
 
         if self.OLLAMA_KEEP_ALIVE == 0 or self.OLLAMA_KEEP_ALIVE < -1:
             raise ValueError("OLLAMA_KEEP_ALIVE must be -1 or greater than zero")
 
-        if self.OLLAMA_REQUEST_TIMEOUT_SECONDS <= 0:
-            raise ValueError("OLLAMA_REQUEST_TIMEOUT_SECONDS must be greater than zero")
+        if self.LLM_REQUEST_TIMEOUT_SECONDS <= 0:
+            raise ValueError("LLM_REQUEST_TIMEOUT_SECONDS must be greater than zero")
 
-        if self.OLLAMA_CHAT_MAX_CONCURRENCY <= 0:
-            raise ValueError("OLLAMA_CHAT_MAX_CONCURRENCY must be greater than zero")
+        if self.LLM_CHAT_MAX_CONCURRENCY <= 0:
+            raise ValueError("LLM_CHAT_MAX_CONCURRENCY must be greater than zero")
 
-        if self.OLLAMA_EMBEDDING_MAX_CONCURRENCY <= 0:
-            raise ValueError(
-                "OLLAMA_EMBEDDING_MAX_CONCURRENCY must be greater than zero"
-            )
+        if self.LLM_EMBEDDING_MAX_CONCURRENCY <= 0:
+            raise ValueError("LLM_EMBEDDING_MAX_CONCURRENCY must be greater than zero")
 
         # -------------------------
         # Retry validation
@@ -340,9 +345,11 @@ class Setting(BaseSettings):
             openrouter_api_key=self.OPENROUTER_API_KEY,
             ollama_base_url=self.OLLAMA_BASE_URL,
             ollama_keep_alive=self.OLLAMA_KEEP_ALIVE,
-            ollama_request_timeout_seconds=(self.OLLAMA_REQUEST_TIMEOUT_SECONDS),
-            ollama_chat_max_concurrency=(self.OLLAMA_CHAT_MAX_CONCURRENCY),
-            ollama_embedding_max_concurrency=(self.OLLAMA_EMBEDDING_MAX_CONCURRENCY),
+            openrouter_base_url=self.OPENROUTER_BASE_URL,
+            max_tokens=self.LLM_MAX_TOKENS,
+            request_timeout_seconds=(self.LLM_REQUEST_TIMEOUT_SECONDS),
+            chat_max_concurrency=(self.LLM_CHAT_MAX_CONCURRENCY),
+            embedding_max_concurrency=(self.LLM_EMBEDDING_MAX_CONCURRENCY),
             model_warmup_enabled=self.MODEL_WARMUP_ENABLED,
             model_warmup_timeout_seconds=(self.MODEL_WARMUP_TIMEOUT_SECONDS),
             chat_models=self.CHAT_MODELS,
