@@ -36,9 +36,9 @@ class ModelFactory:
             config.model,
         )
 
-        if config.provider == "ollama":
-            llm_config = self.settings.llm
+        llm_config = self.settings.llm
 
+        if config.provider == "ollama":
             if not llm_config.ollama_base_url:
                 raise ValueError(
                     "OLLAMA_BASE_URL is required",
@@ -48,8 +48,9 @@ class ModelFactory:
                 model_id=config.model,
                 base_url=llm_config.ollama_base_url,
                 keep_alive=llm_config.ollama_keep_alive,
-                timeout_seconds=(llm_config.ollama_request_timeout_seconds),
-                max_concurrency=(llm_config.ollama_chat_max_concurrency),
+                timeout_seconds=llm_config.request_timeout_seconds,
+                max_tokens=llm_config.max_tokens,
+                max_concurrency=llm_config.chat_max_concurrency,
                 retry_config=self.settings.retry,
             )
 
@@ -62,6 +63,11 @@ class ModelFactory:
             return OpenRouterChatModel(
                 model_id=config.model,
                 api_key=self.settings.OPENROUTER_API_KEY,
+                base_url=llm_config.openrouter_base_url,
+                timeout_seconds=llm_config.request_timeout_seconds,
+                max_tokens=llm_config.max_tokens,
+                max_concurrency=llm_config.chat_max_concurrency,
+                retry_config=self.settings.retry,
             )
 
         raise ValueError(
@@ -79,9 +85,9 @@ class ModelFactory:
             config.dimension,
         )
 
-        if config.provider == "ollama":
-            llm_config = self.settings.llm
+        llm_config = self.settings.llm
 
+        if config.provider == "ollama":
             if not llm_config.ollama_base_url:
                 raise ValueError(
                     "OLLAMA_BASE_URL is required",
@@ -92,8 +98,8 @@ class ModelFactory:
                 base_url=llm_config.ollama_base_url,
                 dimension=config.dimension,
                 keep_alive=llm_config.ollama_keep_alive,
-                timeout_seconds=(llm_config.ollama_request_timeout_seconds),
-                max_concurrency=(llm_config.ollama_embedding_max_concurrency),
+                timeout_seconds=llm_config.request_timeout_seconds,
+                max_concurrency=llm_config.embedding_max_concurrency,
                 retry_config=self.settings.retry,
             )
 
@@ -107,6 +113,10 @@ class ModelFactory:
                 model_id=config.model,
                 api_key=self.settings.OPENROUTER_API_KEY,
                 dimension=config.dimension,
+                base_url=llm_config.openrouter_base_url,
+                timeout_seconds=llm_config.request_timeout_seconds,
+                max_concurrency=llm_config.embedding_max_concurrency,
+                retry_config=self.settings.retry,
             )
 
         raise ValueError(

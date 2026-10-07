@@ -6,6 +6,11 @@ from ollama import AsyncClient, ResponseError
 from core.retry import retry_async
 from helpers.config import RetryConfig
 from utils.logger import get_logger
+from utils.metrics import (
+    LLM_INPUT_TOKENS,
+    LLM_OUTPUT_TOKENS,
+    LLM_TOTAL_TOKENS,
+)
 
 from ..chat_interface import ChatModel
 from ..embedding_interface import EmbeddingModel
@@ -45,11 +50,13 @@ class OllamaChatModel(ChatModel):
         base_url: str,
         keep_alive: int = 300,
         timeout_seconds: int = 120,
+        max_tokens: int = 300,
         max_concurrency: int = 1,
         retry_config: RetryConfig | None = None,
     ):
         self.model_id = model_id
         self.keep_alive = keep_alive
+        self.max_tokens = max_tokens
 
         self.timeout_seconds = timeout_seconds
         self.max_concurrency = max_concurrency
@@ -68,11 +75,61 @@ class OllamaChatModel(ChatModel):
         logger.info(
             "Initialized Ollama chat model: "
             "model=%s | timeout=%ss | "
-            "max_concurrency=%s",
+            "max_tokens=%s | max_concurrency=%s",
             self.model_id,
             self.timeout_seconds,
+            self.max_tokens,
             self.max_concurrency,
         )
+
+    def _record_token_usage(
+        self,
+        response,
+    ) -> bool:
+        """
+        Record token usage returned by Ollama.
+
+        Returns True when token usage was available.
+        """
+
+        input_tokens = response.get(
+            "prompt_eval_count",
+        )
+        output_tokens = response.get(
+            "eval_count",
+        )
+
+        if input_tokens is None and output_tokens is None:
+            return False
+
+        input_tokens = input_tokens or 0
+        output_tokens = output_tokens or 0
+        total_tokens = input_tokens + output_tokens
+
+        LLM_INPUT_TOKENS.labels(
+            provider="ollama",
+            model=self.model_id,
+        ).inc(input_tokens)
+
+        LLM_OUTPUT_TOKENS.labels(
+            provider="ollama",
+            model=self.model_id,
+        ).inc(output_tokens)
+
+        LLM_TOTAL_TOKENS.labels(
+            provider="ollama",
+            model=self.model_id,
+        ).inc(total_tokens)
+
+        logger.debug(
+            "Ollama token usage: model=%s | input=%s | output=%s | total=%s",
+            self.model_id,
+            input_tokens,
+            output_tokens,
+            total_tokens,
+        )
+
+        return True
 
     async def _generate_once(
         self,
@@ -84,8 +141,9 @@ class OllamaChatModel(ChatModel):
             "temperature": temperature,
         }
 
-        if max_tokens is not None:
-            options["num_predict"] = max_tokens
+        effective_max_tokens = max_tokens if max_tokens is not None else self.max_tokens
+
+        options["num_predict"] = effective_max_tokens
 
         async with asyncio.timeout(
             self.timeout_seconds,
@@ -101,6 +159,10 @@ class OllamaChatModel(ChatModel):
                 options=options,
                 keep_alive=self.keep_alive,
             )
+
+        self._record_token_usage(
+            response,
+        )
 
         return response["message"]["content"]
 
@@ -164,11 +226,14 @@ class OllamaChatModel(ChatModel):
             "temperature": temperature,
         }
 
-        if max_tokens is not None:
-            options["num_predict"] = max_tokens
+        effective_max_tokens = max_tokens if max_tokens is not None else self.max_tokens
+
+        options["num_predict"] = effective_max_tokens
 
         async with self._semaphore:
             yielded_content = False
+            usage_recorded = False
+
             attempts = (
                 self.retry_config.max_attempts if self.retry_config is not None else 1
             )
@@ -200,6 +265,11 @@ class OllamaChatModel(ChatModel):
                             if content:
                                 yielded_content = True
                                 yield content
+
+                            if not usage_recorded:
+                                usage_recorded = self._record_token_usage(
+                                    chunk,
+                                )
 
                     logger.info(
                         "Ollama stream completed: model=%s",
